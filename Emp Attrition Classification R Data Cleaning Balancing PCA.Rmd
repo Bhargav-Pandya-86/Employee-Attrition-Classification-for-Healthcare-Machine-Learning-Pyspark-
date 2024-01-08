@@ -1,0 +1,1227 @@
+---
+title: "Emp Attrition Classification R Data Cleaning Balancing PCA"
+author: "Bhargav Pandya"
+date: "2023-03-12"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Packages and Libraries**
+
+The following packages needs to be installed before running the code.
+
+```{r}
+install.packages(c("dlookr", "tidyverse", "validate", "ggplot2", "DescTools", "dplyr", "GGally", "ggpubr", "mgcv", "tree", "scales", "skimr", "caret", "purrr", "corrr", "ggbiplot"))
+devtools::install_version('DMwR', '0.4.1')
+install.packages("ROSE")
+remotes::install_github('vqv/ggbiplot')
+remotes::install_github('kassambara/ggcorrplot')
+```
+
+The below code chunk imports all the necessary libraries.
+
+```{r}
+# library(dlookr)
+library(tidyverse)
+library(validate)
+library(ggplot2) 
+library(DescTools)
+library(dplyr)
+library(GGally)
+library(ggpubr)
+library(mgcv)
+library(tree)
+library(scales)
+library(skimr)
+library(caret)
+library(purrr)
+library(corrr)
+library(ggbiplot) 
+# library(DMwR)
+library(ROSE)
+library(ggbiplot)
+
+if(!require(psych)) install.packages("psych") 
+library(psych)
+
+if(!require(devtools)) install.packages("devtools")
+library(devtools)
+
+if(!require(FactoMineR)) install.packages("FactoMineR")
+library("FactoMineR")
+
+if(!require(factoextra)) install.packages("factoextra")
+library(factoextra)
+
+if(!require(devtools)) install.packages("devtools") 
+devtools::install_github("kassambara/ggcorrplot")
+library(ggcorrplot)
+```
+
+**Data Cleaning**
+
+After loading the necessary libraries, the first step is to achieve the task of data cleaning and preparations which is split into the following sections:
+
+1. [Organise and clean data](#WS1)\
+1.1 [Read dataset](#WS1.1)\
+1.2 [Data frame](#WS1.2)\
+1.3 [Data quality analysis](#WS1.3)\
+1.3.1 [Exploring the structure of Data](#WS1.3.1)\
+1.3.2 [Validation Rules for NA values](#WS1.3.2)\
+1.3.3 [Data Uniqueness Check](#WS1.3.3)\
+1.3.4 [Validation Rules for Data Type check](#WS1.3.4)\
+1.3.5 [Validation Rules for Integrity check](#WS1.3.5)\
+
+The data preparation is split into the following section:
+
+2. [Split data - Train, Test, Validation Sets](#WS2)\
+
+# 1. Organise and clean the data {#WS1}
+
+## 1.1 Read in the data set watson_healthcare_modified.csv {#WS1.1}
+The Watson downloaded data set consisted of 1,676 row observations.
+
+```{r}
+watson.health <- read.csv("watson_healthcare_modified.csv")
+```
+ 
+
+## 1.2 Data frame {#WS1.2}
+The below R code shows that there are 35 variables of mixed data types with 1,676 observations. 
+
+The original data set has been backup in a new data frame named "health.df" as it is a good practice not to work on the original data set. 
+
+```{r}
+#Put data into a dataframe
+health.df <- watson.health
+
+#Column names
+names(health.df)
+```
+
+
+## 1.3 Data quality analysis {#WS1.3}
+ 
+The purpose of data quality plan is to view the data at a high level for completeness before exploratory data analysis. The following data quality plan is executed in the following phases:
+
+
+## 1.3.1 Exploring the structure of Data {#WS1.3.1}
+
+The overview of data has been conducted before data cleaning using skim() function from skimr library. Skim() does not work well with NA and NAN values, before data cleaning, but it is a good practice to take overview of data before start working. Dim() is also used to analyse the dimension of the data.
+
+
+```{r}
+#using dim() to get the dimensions of the dataset
+dim(health.df)
+```
+The dataset has 35 Variables of mixed type and 1676 observations.
+
+```{r}
+##using skim() to get a broad overview of a data frame
+skim(health.df)
+```
+
+A summary of the 1st 6 rows of data were: 
+
+```{r}
+#First 6 rows of data
+head(health.df)
+```
+
+The last 6 rows of data were: 
+```{r}
+#Last 6 rows of data
+tail(health.df)
+```
+
+```{r}
+summary(health.df)
+```
+
+
+##Review of Catergorial- columns 
+
+1. Attrition
+```{r}
+table(health.df$Attrition)
+```
+
+2. BusinessTravel
+
+```{r}
+table(health.df$BusinessTravel)
+```
+
+3. Department
+```{r}
+table(health.df$Department)
+```
+
+4. EducationField
+```{r}
+table(health.df$EducationField)
+```
+
+5. Gender
+```{r}
+table(health.df$Gender)
+```
+
+6. JobRole
+```{r}
+table(health.df$JobRole)
+```
+
+7. Martial Status
+```{r}
+table(health.df$MaritalStatus)
+```
+
+8.Over18
+```{r}
+table(health.df$Over18)
+```
+
+9. OverTime
+```{r}
+table(health.df$OverTime)
+```
+
+
+## 1.3.2 Validation Rules for NA values {#WS1.3.2}
+
+```{r}
+missing.rules <- validator(
+                           missing.NA_EmployeeID = !is.na(EmployeeID),
+                           missing.NAN_EmployeeID = !is.nan(EmployeeID),
+                           
+                           missing.NA_Age = !is.na(Age),
+                           missing.NAN_Age = !is.nan(Age),
+                           
+                           missing.NA_Attrition = !is.na(Attrition),
+                           missing.NAN_Attrition = !is.nan(Attrition),
+                           
+                           missing.NA_BusinessTravel = !is.na(BusinessTravel),
+                           missing.NAN_BusinessTravel = !is.nan(BusinessTravel),
+                           
+                           missing.NA_DailyRate = !is.na(DailyRate),
+                           missing.NAN_DailyRate = !is.nan(DailyRate),
+                           
+                           missing.NA_Department = !is.na(Department),
+                           missing.NAN_Department = !is.nan(Department),
+                           
+                           missing.NA_DistanceFromHome = !is.na(DistanceFromHome),
+                           missing.NAN_DistanceFromHome = !is.nan(DistanceFromHome),
+                           
+                           missing.NA_Education = !is.na(Education),
+                           missing.NAN_Education = !is.nan(Education),
+                           
+                           missing.NA_EducationField = !is.na(EducationField),
+                           missing.NAN_EducationField = !is.nan(EducationField),
+                           
+                           missing.NA_has_EmployeeCount = !is.na(EmployeeCount),
+                           missing.NAN_has_EmployeeCount = !is.nan(EmployeeCount),
+                           
+                           missing.NA_is_EnvironmentSatisfaction = !is.na(EnvironmentSatisfaction),
+                           missing.NAN_is_EnvironmentSatisfaction = !is.nan(EnvironmentSatisfaction),
+                           
+                           missing.NA_Gender = !is.na(Gender),
+                           missing.NAN_Gender = !is.nan(Gender),
+                           
+                           missing.NA_HourlyRate = !is.na(HourlyRate),
+                           missing.NAN_HourlyRate = !is.nan(HourlyRate),
+                           
+                           missing.NA_JobInvolvement = !is.na(JobInvolvement),
+                           missing.NAN_JobInvolvement = !is.nan(JobInvolvement),
+                           
+                           missing.NA_JobLevel = !is.na(JobLevel),
+                           missing.NAN_JobLevel = !is.nan(JobLevel),
+                           
+                           missing.NA_JobRole = !is.na(JobRole),
+                           missing.NAN_JobRole = !is.nan(JobRole),
+                           
+                           missing.NA_JobSatisfaction = !is.na(JobSatisfaction),
+                           missing.NAN_JobSatisfaction = !is.nan(JobSatisfaction),
+                           
+                           missing.NA_MaritalStatus = !is.na(MaritalStatus),
+                           missing.NAN_MaritalStatus = !is.nan(MaritalStatus),
+                           
+                           missing.NA_MonthlyIncome = !is.na(MonthlyIncome),
+                           missing.NAN_MonthlyIncome = !is.nan(MonthlyIncome),
+                           
+                           missing.NA_MonthlyRate = !is.na(MonthlyRate),
+                           missing.NAN_MonthlyRate = !is.nan(MonthlyRate),
+                           
+                           missing.NA_NumCompaniesWorked = !is.na(NumCompaniesWorked),
+                           missing.NAN_NumCompaniesWorked = !is.nan(NumCompaniesWorked),
+                           
+                           missing.NA_Over18 = !is.na(Over18),
+                           missing.NAN_Over18 = !is.nan(Over18),
+                           
+                           missing.NA_OverTime = !is.na(OverTime),
+                           missing.NAN_OverTime = !is.nan(OverTime),
+                           
+                           missing.NA_PercentSalaryHike = !is.na(PercentSalaryHike),
+                           missing.NAN_PercentSalaryHike = !is.nan(PercentSalaryHike),
+                           
+                           missing.NA_PerformanceRating = !is.na(PerformanceRating),
+                           missing.NAN_PerformanceRating = !is.nan(PerformanceRating),
+                           
+                           missing.NA_RelationshipSatisfaction = !is.na(RelationshipSatisfaction),
+                           missing.NAN_RelationshipSatisfaction = !is.nan(RelationshipSatisfaction),
+                           
+                           missing.NA_StandardHours = !is.na(StandardHours),
+                           missing.NAN_StandardHours = !is.nan(StandardHours),
+                           
+                           missing.NA_Shift = !is.na(Shift),
+                           missing.NAN_Shift = !is.nan(Shift),
+                           
+                           missing.NA_TotalWorkingYears = !is.na(TotalWorkingYears),
+                           missing.NAN_TotalWorkingYears = !is.nan(TotalWorkingYears),
+                           
+                           missing.NA_TrainingTimesLastYear = !is.na(TrainingTimesLastYear),
+                           missing.NAN_TrainingTimesLastYear = !is.nan(TrainingTimesLastYear),
+                           
+                           missing.NA_WorkLifeBalance = !is.na(WorkLifeBalance),
+                           missing.NAN_WorkLifeBalance = !is.nan(WorkLifeBalance),
+                           
+                           missing.NA_YearsAtCompany = !is.na(YearsAtCompany),
+                           missing.NAN_YearsAtCompany = !is.nan(YearsAtCompany),
+                           
+                           missing.NA_YearsInCurrentRole = !is.na(YearsInCurrentRole),
+                           missing.NAN_YearsInCurrentRole = !is.nan(YearsInCurrentRole),
+                           
+                           missing.NA_YearsSinceLastPromotion = !is.na(YearsSinceLastPromotion),
+                           missing.NAN_YearsSinceLastPromotion = !is.nan(YearsSinceLastPromotion),
+                           
+                           missing.NA_YearsWithCurrManager = !is.na(YearsWithCurrManager),
+                           missing.NAN_YearsWithCurrManager = !is.nan(YearsWithCurrManager)
+                        
+)   
+```
+
+```{r}
+qualcheck_missing <- confront(health.df,missing.rules) 
+summary(qualcheck_missing)
+plot(qualcheck_missing, xlab = "Missing check validation result.")
+```
+
+The output of the above function shows that there are no NA and NANs values in the dataframe.
+
+## 1.3.3 Data Uniqueness Check {#WS1.3.3}
+
+```{r}
+## uniqueness check
+
+unique_check <- function(health.df) {
+  duplicates <- duplicated(health.df)
+  unique_data <- health.df[!duplicates, ]
+  return(unique_data)
+}
+```
+
+```{r}
+cat("number of unique rows before unique_check test = ",  nrow(health.df), "\n")
+health.df <- unique_check(health.df)
+cat("number of unique rows after unique_check test = ",  nrow(health.df))
+```
+
+The output of above function shows that there are no duplicated records in the dataframe.
+
+
+## 1.3.4 Validation Rules for Data type Check {#WS1.3.4}
+
+```{r}
+## Checking variable type
+variabletype.rule <- validator(
+    variable_EmployeeID = is.numeric(EmployeeID),
+    variable_Age = is.numeric(Age),
+    variable_Attrition = is.factor(Attrition),
+    variable_BusinessTravel = is.factor(BusinessTravel),
+    variable_DailyRate = is.numeric(DailyRate),
+    variable_Department = is.factor(Department),
+    variable_DistanceFromHome = is.numeric(DistanceFromHome),
+    variable_Education = is.factor(Education),
+    variable_EducationField = is.factor(EducationField),
+    variable_EmployeeCount = is.numeric(EmployeeCount),
+    variable_EnvironmentSatisfaction = is.factor(EnvironmentSatisfaction),
+    variable_Gender = is.factor(Gender),
+    variable_HourlyRate = is.numeric(HourlyRate),
+    variable_JobInvolvement = is.factor(JobInvolvement),
+    variable_JobLevel = is.factor(JobLevel),
+    variable_JobRole = is.factor(JobRole),
+    variable_JobSatisfaction = is.factor(JobSatisfaction),
+    variable_MaritalStatus = is.factor(MaritalStatus),
+    variable_MonthlyIncome = is.numeric(MonthlyIncome),
+    variable_MonthlyRate = is.numeric(MonthlyRate),
+    variable_NumCompaniesWorked = is.numeric(NumCompaniesWorked),
+    variable_Over18 = is.factor(Over18),
+    variable_OverTime = is.factor(OverTime),
+    variable_PercentSalaryHike = is.numeric(PercentSalaryHike),
+    variable_PerformanceRating = is.factor(PerformanceRating),
+    variable_RelationshipSatisfaction = is.factor(RelationshipSatisfaction),
+    variable_StandardHours = is.numeric(StandardHours),
+    variable_Shift = is.factor(Shift),
+    variable_TotalWorkingYears = is.numeric(TotalWorkingYears),
+    variable_TrainingTimesLastYear = is.numeric(TrainingTimesLastYear),
+    variable_WorkLifeBalance = is.factor(WorkLifeBalance),
+    variable_YearsAtCompany = is.numeric(YearsAtCompany),
+    variable_YearsInCurrentRole = is.numeric(YearsInCurrentRole),
+    variable_YearsSinceLastPromotion = is.numeric(YearsSinceLastPromotion),
+    variable_YearsWithCurrManager = is.numeric(YearsWithCurrManager)
+    
+  )
+
+```
+
+```{r}
+qualcheck_variabletype <-confront(health.df,variabletype.rule) 
+
+summary(qualcheck_variabletype)
+
+plot(qualcheck_variabletype, xlab = "Variable type check validation result.")
+```
+
+The output of above validation rules show that out of 35, 18 variables does have correct datatype. This will be fixed in the data cleaning phase.
+
+## 1.3.5 Validation Rules for data Intergrity check {#WS1.3.5}
+
+```{r}
+##Integrity check
+integrity.rules <- validator(
+                             NonNegEmpId = EmployeeID > 0,
+                             NonNegAge = Age > 15,
+                             okAttrition = is.element(Attrition,c("No","Yes")),
+                             okBusinessTravel = is.element(BusinessTravel,c("Non-Travel","Travel_Frequently", "Travel_Rarely")),
+                             NonNegDailyRate = DailyRate > 0,
+                             NonNegDistanceFromHome = DistanceFromHome >0 & DistanceFromHome < 100,
+                             OkEducation = is.element(Education, c("1","2", "3", "4", "5")),
+                             okEducationField = is.element(EducationField,c("Human Resources","Life Sciences", "Marketing", "Medical", "Other", "Technical Degree")),
+                             NonNegEnvironmentSatisfaction = is.element(EnvironmentSatisfaction, c("0","1","2", "3", "4", "5")),
+                             okGender = is.element(Gender,c("Female","Male")),
+                             NonNegHourlyRate = HourlyRate > 0 & HourlyRate < 101,
+                             OkJobInvolvement = is.element(JobInvolvement, c("1","2", "3", "4", "5")),
+                             OkJobLevel = is.element(JobLevel, c("1","2", "3", "4", "5")),
+                             OkJobRole = is.element(JobRole, c("Administrative", "Nurse", "Therapist", "Other")),
+                             OkJobSatisfaction = is.element(JobSatisfaction, c("1","2", "3", "4", "5")),
+                             OkMaritalStatus = is.element(MaritalStatus, c("Divorced","Married", "Single")),
+                             NonNegMonthlyIncome = MonthlyIncome > 0 & MonthlyIncome < 30000,
+                             NonNegMonthlyRate = MonthlyRate > 0 & MonthlyRate < 30000,
+                             NonNegNumCompaniesWorked = NumCompaniesWorked >= 0 & NumCompaniesWorked <= 50,
+                             okOver18 = is.element(Over18,c("Y","N")),
+                             OkOverTime = is.element(OverTime,c("Yes","No")),
+                             OkPercentSalaryHike = PercentSalaryHike >= -50 & PercentSalaryHike < 100,
+                             OkPerformanceRating = is.element(PerformanceRating, c("1","2", "3", "4", "5")),
+                             OkRelationshipSatisfaction = is.element(RelationshipSatisfaction, c("1","2", "3", "4", "5")),
+                             OkStandardHours = StandardHours >= 1 & StandardHours <= 80,
+                             OkShift = is.element(Shift, c("0", "1","2", "3")),
+                             NonNegTotalWorkingYears = TotalWorkingYears >= 0 & TotalWorkingYears < 60,
+                             OkTrainingTimesLastYear = is.element(TrainingTimesLastYear, c("0", "1","2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")),
+                             OkWorkLifeBalance = is.element(WorkLifeBalance, c("0", "1","2", "3", "4", "5")),
+                             NonNegYearsAtCompany = YearsAtCompany >= 0 & YearsAtCompany <= 60,
+                             NonNegYearsInCurrentRole = YearsInCurrentRole >= 0 & YearsInCurrentRole <= 60,
+                             NonNegYearsSinceLastPromotion = YearsSinceLastPromotion >= 0 & YearsSinceLastPromotion <= 60,
+                             NonNegYearsWithCurrManager = YearsWithCurrManager >= 0 & YearsWithCurrManager <= 60
+                             
+                         )
+```
+
+```{r}
+qualcheck_integrity <-confront(health.df,integrity.rules) 
+summary(qualcheck_integrity)
+plot(qualcheck_integrity, xlab = "Integrity check validation result.")
+```
+
+The output of the above validation rules shows that all records have passed integrity checks except for Job role since it should have 4 factor levels as:
+ 1.Administrative
+ 2.Nurse
+ 3.Therapist
+ 4.Other
+ 
+"Admin" and "Administrative" are same job roles. So in Data cleaning we change the value of "Admin" with "Administration" where applicable. 
+
+**Data Cleaning**
+
+Numeric values all look feasible. For all other categorical columns they need to be changed to factors.
+
+The below code is to rectify the incorrect datatypes identified in section 1.3.4
+
+```{r}
+##Using as.factor to change data type from chr and numeric to factor
+
+health.df$Attrition = as.factor(health.df$Attrition)
+health.df$BusinessTravel = as.factor(health.df$BusinessTravel)
+health.df$Department = as.factor(health.df$Department)
+health.df$Education = as.factor(health.df$Education)
+health.df$EducationField = as.factor(health.df$EducationField)
+health.df$EnvironmentSatisfaction = as.factor(health.df$EnvironmentSatisfaction)
+health.df$Gender = as.factor(health.df$Gender)
+health.df$JobLevel = as.factor(health.df$JobLevel)
+health.df$JobRole = as.factor(health.df$JobRole)
+health.df$JobSatisfaction = as.factor(health.df$JobSatisfaction)
+health.df$MaritalStatus = as.factor(health.df$MaritalStatus)
+health.df$Over18 = as.factor(health.df$Over18)
+health.df$OverTime = as.factor(health.df$OverTime)
+health.df$PerformanceRating = as.factor(health.df$PerformanceRating)
+health.df$RelationshipSatisfaction = as.factor(health.df$RelationshipSatisfaction)
+health.df$Shift = as.factor(health.df$Shift)
+health.df$JobInvolvement = as.factor(health.df$JobInvolvement)
+health.df$WorkLifeBalance = as.factor(health.df$WorkLifeBalance)
+```
+
+The below code is to merge the rows of job role "Administration" and "Admin" into single value "Administrative" identified in section 1.3.5
+
+```{r}
+#replacing the rows with value "Admin" to "Administrative" for JobRole column
+health.df$JobRole[health.df$JobRole == "Admin"] <- "Administrative"
+```
+
+
+```{r}
+table(health.df$JobRole)
+```
+
+**Data Preparation**
+
+# 2. Split data - Train, Test, Validation Sets {#WS2}
+
+We will now partition the data into three distinct sets: training, testing, and validation. The training set will comprise 70% of the data, while the validation and testing sets will each account for 15%.
+
+```{r}
+# Split data into training, testing, and validation sets
+set.seed(123)
+# Use createDataPartition to split the data into training and temporary sets
+index <- createDataPartition(health.df$HourlyRate, p = 0.7, list = FALSE)
+train_df <- health.df[index, ]
+temp_df <- health.df[-index, ]
+
+set.seed(456)
+# Use createDataPartition again to split the temporary set into testing and validation sets
+index2 <- createDataPartition(temp_df$HourlyRate, p = 0.5, list = FALSE)
+test_df <- temp_df[index2, ]
+valid_df <- temp_df[-index2, ]
+```
+
+
+**Exploratory Data Analysis**
+
+The Exploratory Data Analysis is split into the following sections:
+
+3.1 [Bivariate Analysis of Target and Independent Variables](#WS3.1)\
+3.2 [Multivaraite Analysis](#WS3.2)\
+3.3 [PCA - Principal Component Analysis](#WS3.3)\
+3.3.1 [Compute Correlation Matrix](#WS3.3.1)\
+3.3.2 [Applying PCA](#WS3.3.2)\
+
+#3.1 Bivariate Analysis of Target and Independent Variables {#WS3.1}
+
+The Research Question is "Can we predict Employee's Attrition based on other Employee Characteristics e.g age, experience etc?" Therefore, it is clear that the target variable is "Attrition" in the training data set.
+
+##3.1.1 Bivariate Analysis - Target variable and Categorical independent Variables
+
+Before Applying the correlation test for target categorical variable and independent categorical variable, we will define the hypothesis as follow:
+
+H_0 : There is no significance association between variables, hence they are not correlated.
+H_1 : There is significance association between variables, and they are correlated.
+
+(1) Attrition and Business Travel
+
+```{r}
+# create a contingency table
+mytable1 <- table(train_df$BusinessTravel, train_df$Attrition)
+mytable1
+
+# perform the Chi-squared test
+chisq.test(mytable1)
+```
+
+The outcome of above test shows that p-value is significant and we have enough evidence to reject the null hypothesis and that these variables are correlated.
+
+(2) Attrition and Department
+
+```{r}
+# create a contingency table
+mytable2 <- table(train_df$Department, train_df$Attrition)
+mytable2
+
+# perform the Chi-squared test
+chisq.test(mytable2)
+```
+
+The outcome of above test shows that p-value is not significant and we don't have enough evidence to reject the null hypothesis and that these variables are not correlated.
+
+(3) Attrition and Education
+
+```{r}
+# create a contingency table
+mytable3 <- table(train_df$Education, train_df$Attrition)
+mytable3
+
+# perform the Chi-squared test
+chisq.test(mytable3)
+```
+
+The outcome of above test shows that p-value is not significant and we don't have enough evidence to reject the null hypothesis and that these variables are not correlated.
+
+(4) Attrition and Education Field
+
+```{r}
+# create a contingency table
+mytable4 <- table(train_df$EducationField, train_df$Attrition)
+mytable4
+
+# perform the fisher test as the one of the value frequency is >=5
+fisher.test(mytable4)
+```
+
+The outcome of above test shows that p-value is not significant and we don't have enough evidence to reject the null hypothesis and that these variables are not correlated.
+
+(5) Attrition and Environment Satisfaction
+
+```{r}
+# create a contingency table
+mytable5 <- table(train_df$EnvironmentSatisfaction, train_df$Attrition)
+mytable5
+
+# perform the Chi-squared test
+chisq.test(mytable5)
+```
+
+The outcome of above test shows that p-value is significant and we have enough evidence to reject the null hypothesis and that these variables are correlated.
+
+(6) Attrition and Gender
+
+```{r}
+# create a contingency table
+mytable6 <- table(train_df$Gender, train_df$Attrition)
+mytable6
+
+# perform the Chi-squared test
+chisq.test(mytable6)
+```
+
+The outcome of above test shows that p-value is not significant and we don't have enough evidence to reject the null hypothesis and that these variables are not correlated.
+
+(7) Attrition and Job Involvement
+
+```{r}
+# create a contingency table
+mytable7 <- table(train_df$JobInvolvement, train_df$Attrition)
+mytable7
+
+# perform the Chi-squared test
+chisq.test(mytable7)
+```
+
+The outcome of above test shows that p-value is significant and we have enough evidence to reject the null hypothesis and that these variables are correlated.
+
+(8) Attrition and Job Level
+
+```{r}
+# create a contingency table
+mytable8 <- table(train_df$JobLevel, train_df$Attrition)
+mytable8
+
+# perform the Chi-squared test
+chisq.test(mytable8)
+```
+
+The outcome of above test shows that p-value is significant and we have enough evidence to reject the null hypothesis and that these variables are correlated.
+
+(9) Attrition and Job Role
+
+```{r}
+# create a contingency table
+mytable9 <- table(train_df$JobRole, train_df$Attrition)
+mytable9
+
+# perform the Chi-squared test
+fisher.test(mytable9)
+```
+
+The outcome of above test shows that p-value is significant and we have enough evidence to reject the null hypothesis and that these variables are correlated.
+
+(10) Attrition and Job Satisfaction
+
+```{r}
+# create a contingency table
+mytable10 <- table(train_df$JobSatisfaction, train_df$Attrition)
+mytable10
+
+# perform the Chi-squared test
+chisq.test(mytable10)
+```
+
+The outcome of above test shows that p-value is not significant and we don't have enough evidence to reject the null hypothesis and that these variables are not correlated.
+
+(11) Attrition and Marital Status
+
+```{r}
+# create a contingency table
+mytable11 <- table(train_df$MaritalStatus, train_df$Attrition)
+mytable11
+
+# perform the Chi-squared test
+chisq.test(mytable11)
+```
+
+The outcome of above test shows that p-value is significant and we have enough evidence to reject the null hypothesis and that these variables are correlated.
+
+(12) Attrition and Over Time
+
+```{r}
+# create a contingency table
+mytable12 <- table(train_df$OverTime, train_df$Attrition)
+mytable12
+
+# perform the Chi-squared test
+chisq.test(mytable12)
+```
+
+The outcome of above test shows that p-value is significant and we have enough evidence to reject the null hypothesis and that these variables are correlated.
+
+(13) Attrition and Performance Rating
+
+```{r}
+# create a contingency table
+mytable13 <- table(train_df$PerformanceRating, train_df$Attrition)
+mytable13
+
+# perform the Chi-squared test
+chisq.test(mytable13)
+```
+
+The outcome of above test shows that p-value is not significant and we don't have enough evidence to reject the null hypothesis and that these variables are not correlated.
+
+(14) Attrition and Relationship Satisfaction
+
+```{r}
+# create a contingency table
+mytable14 <- table(train_df$RelationshipSatisfaction, train_df$Attrition)
+mytable14
+
+# perform the Chi-squared test
+chisq.test(mytable14)
+```
+
+The outcome of above test shows that p-value is not significant and we don't have enough evidence to reject the null hypothesis and that these variables are not correlated.
+
+(15) Attrition and Shift
+
+```{r}
+# create a contingency table
+mytable15 <- table(train_df$Shift, train_df$Attrition)
+mytable15
+
+# perform the Chi-squared test
+chisq.test(mytable15)
+```
+
+The outcome of above test shows that p-value is significant and we have enough evidence to reject the null hypothesis and that these variables are correlated.
+
+(16) Attrition and work life balance
+
+```{r}
+# create a contingency table
+mytable16 <- table(train_df$WorkLifeBalance, train_df$Attrition)
+mytable16
+
+# perform the Chi-squared test
+chisq.test(mytable16)
+```
+
+The outcome of above test shows that p-value is significant and we have enough evidence to reject the null hypothesis and that these variables are correlated.
+
+Therefore, we will be using the following  9 categorical variables in our model as they have small p-value and shows some correlation with the target variable "Attrition". 
+
+ 1. Business Travel
+ 2. Environment Satisfaction
+ 3. Job Involvement 
+ 4. Job Level
+ 5. Job Role
+ 6. Marital Status
+ 7. Over Time
+ 8. Shift
+ 9. Work Life balance
+
+##3.1.2 Bivariate Analysis - Target variable and Numeric independent Variables
+
+The bivariate analysis of target categorical variables and numeric independent variables have been performed using Boxplot to identify siginficant mean differences in the target variable. 
+
+(1) Attrition and Age
+
+
+```{r}
+ggplot(train_df,
+       aes(x = Attrition,
+           y = Age , color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Age distribution by Attrition")
+
+```
+
+(2) Attrition and Daily Rate
+
+```{r}
+ggplot(train_df,
+       aes(x = Attrition,
+           y = DailyRate, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Daily Rate distribution by Attrition")
+
+
+```
+
+
+(3) Attrition and Distance from home
+
+```{r}
+
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = DistanceFromHome, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Distance From Home distribution by Attrition")
+
+
+```
+
+(4) Attrition and Hourly Rate
+
+```{r}
+
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = HourlyRate, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Hourly Rate distribution by Attrition")
+
+```
+
+(5) Attrition and Monthly Income
+
+```{r}
+
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = MonthlyIncome, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Monthly Income distribution by Attrition")
+```
+
+(6) Attrition and Monthly Rate
+
+```{r}
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = MonthlyRate, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Monthly Rate distribution by Attrition")
+```
+
+(7) Attrition and Number of Companies Worked
+
+```{r}
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = NumCompaniesWorked, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Number of Companies Worked distribution by Attrition") 
+  
+```
+
+(8) Attrition and Percent Salary Hike
+
+```{r}
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = PercentSalaryHike, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Percent Salary Hike distribution by Attrition") 
+  
+```
+
+(9) Attrition and Total Working Years
+
+```{r}
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = TotalWorkingYears, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Total Working Years distribution by Attrition") 
+  
+```
+
+(10) Attrition and Training Times Last Year
+
+```{r}
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = TrainingTimesLastYear, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Training Times Last Year distribution by Attrition") 
+  
+```
+
+(11) Attrition and Years At company
+
+```{r}
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = YearsAtCompany, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Years At Company distribution by Attrition") 
+  
+```
+
+(12) Attrition and Year In Current Role
+
+```{r}
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = YearsInCurrentRole, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Years in Current Role distribution by Attrition") 
+  
+```
+
+(13) Attrition and Years Since Last Promotion
+
+```{r}
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = YearsSinceLastPromotion, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Years Since Last promotion distribution by Attrition") 
+  
+```
+
+(14) Attrition and Years With Current Manager
+
+```{r}
+ggplot(train_df, 
+       aes(x = Attrition, 
+           y = YearsWithCurrManager, color = Attrition)) +
+  geom_boxplot() +
+  labs(title = "Years with Curr manager distribution by Attrition") 
+  
+```
+
+
+According to the findings of the aforementioned bivariate analysis, only a small number of variables show significant mean differences for both component levels of the target variable Attrition. These indicators can therefore be useful for predicting employee attrition but further insights will be gained via principal component analysis.Furthermore, Boxplots identified certain outliers that resided outside of their IQR (inter quantile ranges). Because the boxplot outliers were slightly outside the standard deviation and passed all integrity checks put in place in part 1, we will not remove any of them.
+
+##3.2 Multivariate Analysis - Numeric Variables
+
+The multivariate analysis is conducted for all the numeric variables in the chosen dataset to identify multicolinearity within these variables.
+
+```{r}
+# Select only the numeric columns
+numeric_cols <- train_df %>% select_if(is.numeric)
+
+# Create correlation matrix
+cor_matrix <- cor(numeric_cols)
+
+# Convert correlation matrix to tidy format
+cor_data <- as.data.frame(as.table(cor_matrix))
+colnames(cor_data) <- c("var1", "var2", "correlation")
+
+# Create plot using ggplot2
+ggplot(cor_data, aes(x = var1, y = var2, fill = correlation)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Pearson\nCorrelation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.justification = c(1, 0), 
+        legend.position = c(0.99, 0.01),
+        legend.direction = "horizontal") +
+  coord_fixed()
+
+```
+
+```{r}
+# Find variables with correlation greater than 0.6
+high_cor <- which(abs(cor_matrix) > 0.6 & cor_matrix != 1, arr.ind = TRUE)
+
+high_var <- unique(c(names(train_df)[high_cor[, 1]], names(iris)[high_cor[, 2]]))
+
+# Print the variable names with high correlation
+cat("Variables with correlation > 0.5:\n")
+print(unique(c(colnames(cor_matrix)[high_cor[, 1]], colnames(cor_matrix)[high_cor[, 2]])))
+
+
+cat("\n\n\n\n")
+
+
+# Find variables with correlation greater than 0.7
+high_cor_7 <- which(abs(cor_matrix) > 0.7 & cor_matrix != 1, arr.ind = TRUE)
+
+high_var_7 <- unique(c(names(train_df)[high_cor_7[, 1]], names(iris)[high_cor_7[, 2]]))
+
+# Print the variable names with high correlation
+cat("Variables with correlation > 0.7:\n")
+print(unique(c(colnames(cor_matrix)[high_cor_7[, 1]], colnames(cor_matrix)[high_cor_7[, 2]])))
+```
+
+The above output shows multicolinearity between 5 variables:
+
+ 1 - Total Working Years
+ 2 - Monthly Income
+ 3 - Years in Current Role
+ 4 - Years With Current Manager
+ 5 - Years at company
+ 
+ 
+Dropping one of these variables will be considered after performing Principal Component Analysis (PCA).
+
+
+##3.3 Principlal Component Analysis
+
+
+PCA only works with numerical values. So, we need to get rid of the non-numeric columns. Also, the EmployeeID, StandardHours, EmployeeCount columns are not relevant to the analysis. As StandardHours and EmployeeCount variables have same values in every observations.
+ 
+The code below creates new data with only numeric columns.
+
+```{r}
+
+# Identify and subset numeric columns
+only_numeric_df <- subset(train_df, select = -c(EmployeeID, StandardHours, EmployeeCount))%>% keep(is.numeric)
+
+colnames(only_numeric_df)
+
+cat("\n\n\n\n")
+
+# Applying standard scalar for normalization
+data_normalized <- scale(only_numeric_df)
+head(data_normalized)
+
+```
+
+
+#3.3.1 Compute the correlation matrix
+
+Even though the covariance matrix is stated in the previous EDA steps, the correlation also can be used, and can be computed using the cor() function from the corrr package. The ggcorrplot() can be applied then for better visualization.
+
+```{r}
+corr_matrix <- cor(data_normalized)
+ggcorrplot(corr_matrix)
+```
+
+The result of the correlation matrix can be interpreted as follow: 
+
+The higher the value, the most positively correlated the two variables are.
+The closer the value to -1, the most negatively correlated they are.
+
+
+#3.3.2 Applying PCA
+
+Now, all the resources are available to conduct the PCA analysis. First, the princomp() computes the PCA, and summary() function shows the result.
+
+```{r}
+data.pca <- princomp(corr_matrix)
+summary(data.pca)
+```
+
+we notice that 14 principal components have been generated (Comp.1 to Comp.14), which also correspond to the number of variables in the data.
+
+Each component explains a percentage of the total variance in the data set. In the Cumulative Proportion section, the first principal component explains almost 49.8% of the total variance. The second one explains 14.76% of the total variance. 
+
+The cumulative proportion of Comp.1 to Comp.6 explains nearly 88.44% of the total variance. This means that the first 6 principal components can accurately represent the data. 
+
+
+# Loadings of each principal component (component 1 to 6). 
+```{r}
+data.pca$loadings[, 1:6]
+```
+
+
+There are several conventional visualization techniques that can provide valuable insights into data, and this section intends to discuss a few of those methods, beginning with the scree plot.
+
+
+###Scree Plot
+The initial method in the list is the scree plot. This plot is employed to visualize the significance of each principal component and can help decide the quantity of principal components to keep. To generate the scree plot, the fviz_eig() function can be utilized.
+
+```{r}
+fviz_eig(data.pca, addlabels = TRUE)
+```
+
+This graph displays the eigenvalues in a descending curve, starting from the highest and going to the lowest. The first two components are deemed the most crucial, as they encompass nearly 64.56% of the overall data's information. However, to cover contribution of more than 85% of data information, We have to consider first 6 components, which covers 88.44% of information.
+
+###Biplot
+The biplot enables visualization of the similarities and differences among the samples, and additionally illustrates the influence of each characteristic on the respective principal components.
+
+# Biplot of the attributes combined with cos2
+```{r}
+# Graph of the variables
+
+# fviz_pca_var(data.pca, col.var = "black", axes = c(1,2)) # For Dim 1 and 2
+fviz_pca_var(data.pca, col.var = "cos2", axes = c(1,2), gradient.cols = c("black", "orange", "green"),repel = TRUE)# For Dim 1 and 2
+
+
+
+# fviz_pca_var(data.pca, col.var = "black", axes = c(2,3)) # For Dim 2 and 3
+fviz_pca_var(data.pca, col.var = "cos2", axes = c(2,3), gradient.cols = c("black", "orange", "green"),repel = TRUE)# For Dim 2 and 3
+
+
+
+# fviz_pca_var(data.pca, col.var = "black", axes = c(3,1)) # For Dim 3 and 1
+fviz_pca_var(data.pca, col.var = "cos2", axes = c(3,1), gradient.cols = c("black", "orange", "green"),repel = TRUE)# For Dim 3 and 1
+
+
+
+
+```
+
+Three main points can be seen from above PC1 Vs PC2 plot.
+
+First, when variables are close together, it means they have a positive relationship with each other. For example, Age, Total Working Years, and Monthly Income are all positively related. This is interesting because they have the highest values for the first main part of the plot.
+
+Second, the further a variable is from the center, the better it is shown in the plot. Total Working Years are further from the center than Age and Monthly Income, so they are shown better.
+
+Lastly, variables that have a negative relationship with each other appear on opposite sides of the plot's center like, Percent salary Hike, Distance from Home, Training Time last year etc.
+
+From the biplot of PC1 and PC2 above:
+
+High cos2 attributes are colored in green: Total Working Years, Years at Company, Years in Current Role, and Years With Manager
+
+Mid cos2 attributes have an orange color: Age, Number of Company Worked, and Years Since Last Promotion.
+
+Finally, low cos2 attributes have a black color: Monthly Rate, Daily Rate, Hourly Rate, Percentage Salary hike, Distance from Home, and Training Time Last Year.
+
+Same, we can combine different components with each other like PC2 Vs PC3 and PC3 Vs PC1 etc.
+
+# Contribution of each variable in components 1 and 2.
+```{r}
+# With Combination of PC1
+fviz_cos2(data.pca, choice = "var", axes = c(1,2)) # For component 1 and 2.
+fviz_cos2(data.pca, choice = "var", axes = c(1,3)) # For component 1 and 3.
+fviz_cos2(data.pca, choice = "var", axes = c(1,4)) # For component 1 and 4.
+fviz_cos2(data.pca, choice = "var", axes = c(1,5)) # For component 1 and 5.
+fviz_cos2(data.pca, choice = "var", axes = c(1,6)) # For component 1 and 6.
+
+
+# With Combination of PC2
+fviz_cos2(data.pca, choice = "var", axes = c(2,3)) # For component 2 and 3.
+fviz_cos2(data.pca, choice = "var", axes = c(2,4)) # For component 2 and 4.
+fviz_cos2(data.pca, choice = "var", axes = c(2,5)) # For component 2 and 5.
+fviz_cos2(data.pca, choice = "var", axes = c(2,6)) # For component 2 and 6.
+
+
+# With Combination of PC3
+fviz_cos2(data.pca, choice = "var", axes = c(3,4)) # For component 3 and 4.
+fviz_cos2(data.pca, choice = "var", axes = c(3,5)) # For component 3 and 5.
+fviz_cos2(data.pca, choice = "var", axes = c(3,6)) # For component 3 and 6.
+
+# With Combination of PC4
+fviz_cos2(data.pca, choice = "var", axes = c(4,5)) # For component 4 and 5.
+fviz_cos2(data.pca, choice = "var", axes = c(4,6)) # For component 4 and 6.
+
+# With Combination of PC5 and PC6
+fviz_cos2(data.pca, choice = "var", axes = c(5,6)) # For component 5 and 6.
+```
+
+The aim of the above visualization is to figure out how well each variable is shown in a specific component. This measure of representation is known as Cos2, or the square cosine.
+
+A low value indicates that the component doesn't represent the variable very well.
+In contrast, a high value signifies a strong representation of the variable in that component.
+
+As per above chart of Quality representation of PC1 and PC2, we can clearly see that Years at company, Years with Current Manager, Years in Current Role, Total Working Years and Monthly Income are the top Five variables with the highest cos2, hence contributing the most to PC1 and PC2.
+
+Similarly, For combination of different components we can identify contribution of each variables. Variables with Top 3 contribution for each component listed below.
+
+For PC1 and PC2  ==> (1) Years At Company (2) Years With current Manager (3) Years in Current Role
+For PC1 And PC3  ==> (1) Years At Company (2) Years With current Manager (3) Years in Current Role
+For PC1 And PC4  ==> (1) Years At Company (2) Years With current Manager (3) Years in Current Role
+For PC1 And PC5  ==> (1) Years At Company (2) Years With current Manager (3) Years in Current Role
+For PC1 And PC6  ==> (1) Years At Company (2) Years With current Manager (3) Years in Current Role
+
+For PC2 and PC3  ==> (1) Number Of Company Worked (2)Age (3)Training Time Last Year 
+For PC2 and PC4  ==> (1) Number Of Company Worked (2)Age (3)Monthly Rate 
+For PC2 and PC5  ==> (1) Number Of Company Worked (2)Age (3)Percentage Salary Hike 
+For PC2 and PC6  ==> (1) Number Of Company Worked (2)Age (3)Total Working Years
+
+
+For PC3 and PC4  ==> (1) Training Time Last Year  (2)Monthly Rate (3)Distance From Home
+For PC3 and PC5  ==> (1) Percentage Salary Hike (2)Training Time Last Year (3)Distance From Home 
+For PC3 and PC6  ==> (1) Training Time Last Year (2)Percentage Salary Hike (3)Distance From Home
+
+For PC4 and PC5  ==> (1) Daily Rate (2)Monthly Rate (3)Hourly Rate 
+For PC4 and PC6  ==> (1) Daily Rate (2)Monthly Rate (3)Hourly Rate 
+
+For PC5 and PC6  ==> (1) Percentage Salary Hike (2)Hourly Rate (3)Daily Rate
+
+
+If We Distinct above all variables then we have following variables.
+(1) Years At Company (2) Years With current Manager (3) Years in Current Role (4) Number Of Company Worked (5)Age (6)Training Time Last Year (7)Monthly Rate (8)Percentage Salary Hike (9)Total Working Years (10)Distance From Home (11) Daily Rate (12) Hourly Rate 
+
+
+```{r}
+corr_matrix <- cor(data_normalized)
+ggcorrplot(corr_matrix)
+
+cor(train_df$Age, train_df$TotalWorkingYears)
+cor(train_df$MonthlyIncome, train_df$TotalWorkingYears)
+cor(train_df$Age, train_df$TotalWorkingYears)
+```
+
+As per our Correlation Matrix, Years At Company, Years With current Manager, Years in Current Role, Years Since Last Promotion are highly correlated. As per Combination of PC1 with other Component we will select "Years at Company" for modeling part and ignore columns Years With current Manager, Years in Current Role, Years Since Last Promotion.
+
+
+As per our Correlation Matrix, TotalWorkingYears, Age, MonthlyIncome are also highly correlated (Coreelation Coefficient > 0.68). So, As per Combination of PC1 with other Component we will select "TotalWorkingYears" for modeling part as it has more contribution in PC1 (0.35966230) compare to Age, MonthlyIncome. we will ignore columns Age, MonthlyIncome.
+
+As per our Correlation Matrix, Daily Rate, Monthly Rate, Monthly Income, Hourly Rate are not surprisingly correlate with each other. So, I will use them in modeling part.
+
+Therefore, we will choose 9 numeric variables for Modeling part which are mentioned below:
+
+(1) Years At Company 
+(2) Number Of Company Worked 
+(3) Training Time Last Year 
+(4) Monthly Rate 
+(5) Percentage Salary Hike 
+(6) Total Working Years 
+(7) Distance From Home 
+(8) Daily Rate 
+(9) Hourly Rate 
+
+**Target Class Balance**
+
+4. [Balancing out the target Class](#WS4)\
+
+Before balancing the target class, the following code checks the current distribution of the target variable "Attrition" as we want to predict it according the research question.  
+
+```{r}
+table(train_df$Attrition)
+```
+
+As per the output of the above table function it is evident that dataset is highly imbalanced, with the majority class having 1029 observations and the minority class having only 145 observations. In this case, we will use Synthetic minority oversampling technique (SMOTE) to generate synthetic observations for the minority class to balance out the data.
+
+The rationale for using SMOTE for oversampling rather than undersampling is that the train dataset only contains 1029 observations, and if undersampling on the majority class is performed, there won't be many observations left for the data to be trained appropriately because undersampling removes the rows to balance it to the minority class.
+
+```{r}
+# Use SMOTE to oversample the minority class
+set.seed(123)
+over_train <- ovun.sample(Attrition ~ ., data = train_df, method = "over")
+over_train=over_train$data
+
+#check the target class after 
+table(over_train$Attrition)
+```
+
+Now we will copy the newly oversample data to the training dataset because this is the dataset we will use for modelling.
+
+```{r}
+#copying the over train data after oversampling to train dataset
+train_df <- over_train
+
+#checking again if the class is balanced or not
+table(train_df$Attrition)
+```
+
+It is evident from the above output that the target class is balanced now and but it can create an overfit model in some cases, therefore, it is advisable to separate the test dataset before balancing out the class in training set as achieved in this coursework.
+
