@@ -1,0 +1,2 @@
+# Employee-Attrition-Classification-for-Healthcare-Machine-Learning-Pyspark-
+To predict employee's attrition probability in health care sector I have created a PySpark pipeline (Python) for modelling and applied models like Support Vector Machine, Decision Trees, Random Forest, Logistic Regression, GBT, and XgBoost. Before that Data Cleaning, Data balancing and unsupervised methods like PCA has been implemented in R.
