@@ -23,7 +23,7 @@ Details the steps taken in analyzing and selecting relevant features for the pre
 Discusses the various machine learning algorithms/models employed for employee attrition prediction, the preprocessing techniques, hyperparameter tuning, and model testing on validation and test data.
 
 ### 4. High-Performance Computational Implementation
-Highlights the use of Google Colab for high-performance computation, leveraging PySpark for distributed computing, accelerating model training, and validation processes.
+Highlights the use of Google Colab for high-performance computation, leveraging PySpark for distributed computing, and accelerating model training, and validation processes.
 
 ### 5. Performance Evaluation
 Evaluate the models based on metrics such as accuracy, precision, recall, F1 score, and AUC ROC score, concluding the model choice for effective attrition prediction.
